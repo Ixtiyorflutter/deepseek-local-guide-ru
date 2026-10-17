@@ -1,0 +1,40 @@
+# vLLM (OpenAI-совместимый API) + Open WebUI
+# Запуск: VLLM_API_KEY=секрет docker compose -f docker-compose.vllm.yml up -d
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    restart: unless-stopped
+    ipc: host
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    command: >
+      --model deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+      --tensor-parallel-size 2
+      --max-model-len 32768
+      --gpu-memory-utilization 0.92
+      --reasoning-parser deepseek_r1
+      --api-key ${VLLM_API_KEY:-change-me}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    depends_on: [vllm]
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      - ENABLE_OLLAMA_API=false
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=${VLLM_API_KEY:-change-me}
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:

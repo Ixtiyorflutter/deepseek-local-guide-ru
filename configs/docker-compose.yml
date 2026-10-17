@@ -1,0 +1,42 @@
+# Ollama (GPU NVIDIA) + Open WebUI
+# Запуск: docker compose up -d   → http://localhost:3000
+# Затем: docker exec -it ollama ollama pull deepseek-r1:14b
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_CONTEXT_LENGTH=16384
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=2
+    # порт 11434 наружу НЕ публикуем — доступ только из docker-сети
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on: [ollama]
+    ports:
+      - "127.0.0.1:3000:8080"   # наружу — через nginx/Caddy с HTTPS
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_NAME=DeepSeek Local
+      # - ENABLE_SIGNUP=false   # раскомментируйте после создания админа
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  ollama:
+  open-webui:

@@ -1,0 +1,12 @@
+# Русскоязычный ассистент на базе DeepSeek-R1 (дистиллят)
+# ollama create ds-ru -f Modelfile.ru-assistant && ollama run ds-ru
+FROM deepseek-r1:14b
+
+PARAMETER num_ctx 16384
+PARAMETER temperature 0.6
+PARAMETER top_p 0.95
+PARAMETER repeat_penalty 1.05
+PARAMETER num_predict 4096
+
+SYSTEM """Ты — полезный ассистент. Всегда отвечай на русском языке, даже если вопрос задан на другом.
+Пиши кратко и по делу. Если не знаешь ответа — честно скажи об этом."""
