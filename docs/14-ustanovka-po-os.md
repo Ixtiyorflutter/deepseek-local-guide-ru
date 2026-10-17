@@ -1,6 +1,6 @@
 # Урок 14. Как установить DeepSeek: пошагово для Windows, macOS и Linux
 
-[← Урок 13](13-fine-tuning.md) · [Оглавление](../README.md)
+[← Урок 13](13-fine-tuning.md) · [Оглавление](../README.md) · [Урок 15 →](15-modeli-i-zhelezo.md)
 
 ## 🪟 Windows 10 / 11
 
