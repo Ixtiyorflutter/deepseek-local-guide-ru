@@ -5,6 +5,7 @@
 | [chat_cli.py](chat_cli.py) | Консольный чат со стримингом и показом рассуждений |
 | [rag_minimal.py](rag_minimal.py) | RAG по папке документов на `bge-m3` + DeepSeek |
 | [tool_calling.py](tool_calling.py) | Вызов функций (погода, калькулятор), полный цикл |
+| [web_search_agent.py](web_search_agent.py) | Локальный DeepSeek + DeepSeek Search/Fetch API |
 | [benchmark.sh](benchmark.sh) | Замер скорости нескольких моделей в Ollama |
 
 ```bash
