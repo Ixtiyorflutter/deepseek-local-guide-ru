@@ -1,6 +1,6 @@
 # Урок 12. Траблшутинг: ошибки при запуске DeepSeek и их решения
 
-[← Урок 11](11-prod-i-bezopasnost.md) · [Оглавление](../README.md)
+[← Урок 11](11-prod-i-bezopasnost.md) · [Оглавление](../README.md) · [Урок 13 →](13-fine-tuning.md)
 
 ## Память
 
