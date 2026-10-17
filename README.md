@@ -26,7 +26,9 @@
 
 ---
 
-> **TL;DR.** DeepSeek — семейство открытых языковых моделей (open-weight, лицензия MIT) от китайской лаборатории DeepSeek-AI. На обычном компьютере проще всего запустить **дистилляты DeepSeek-R1** (1.5B–70B) одной командой `ollama run deepseek-r1:8b`. Флагманы **DeepSeek-V4-Flash** (284B параметров, 13B активных) и **V4-Pro** (1.6T, 49B активных) с контекстом **1 млн токенов** требуют ~110+ ГБ памяти (Flash) или сервер с 8 GPU (Pro). Ниже — полный пошаговый гайд: от первой команды до своего сервера с API, RAG и агентами.
+> **TL;DR.** DeepSeek — семейство открытых языковых моделей (open-weight, лицензия MIT) от китайской лаборатории DeepSeek-AI. На обычном компьютере проще всего запустить **дистилляты DeepSeek-R1** (1.5B–70B) одной командой `ollama run deepseek-r1:8b`. Самая новая модель — **DeepSeek-V4.1-Flash-1017** (17.10.2026, ~552B + Engram, 8–16B активных, текст и картинки, контекст 1M). Её запускают на серверах через SGLang/vLLM. Для дома лучший флагман — **V4-Flash-0731** (284B / 13B активных): с llama.cpp она влезает в ~110 ГБ. Ниже полный пошаговый гайд: от первой команды до своего сервера с API, веб-поиском, RAG и агентами.
+
+> 🆕 **Новое в октябре 2026:** вышла [DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) (DeepSWE 77.0, быстрее и короче ответы), а у DeepSeek появились официальные [Search и Fetch API](https://api-docs.deepseek.com/guides/search) для агентов. Подробно о всех моделях и железе под них — в [части 3](#-часть-3-какую-модель-deepseek-выбрать) и [уроке 15](docs/15-modeli-i-zhelezo.md).
 
 ## 📑 Содержание
 
@@ -107,6 +109,9 @@ docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway \
 | V3.1 / V3.2 | 2025 | 671B / 37B | Гибридный режим: думает или отвечает сразу; разреженное внимание |
 | **DeepSeek-V4-Flash** | апр. 2026 | 284B / 13B | Контекст 1M, режимы размышлений, MIT |
 | **DeepSeek-V4-Pro** | апр. 2026 | 1.6T / 49B | Флагман, контекст 1M |
+| V4-Flash-0731 / V4-Pro-0813 | июль–авг. 2026 | 284B / 13B и 1.6T / 49B | Обновлённые чекпойнты, зрелые GGUF от Unsloth |
+| DeepSeek-V4.1-Flash | сент. 2026 | ~552B + 196B Engram / 8–16B | Encoder-decoder, ввод картинок, KV-кэш в 4 раза меньше |
+| **DeepSeek-V4.1-Flash-1017** ⭐ | 17 окт. 2026 | то же | Последняя версия: сильнее в агентных задачах и коде, короче ответы |
 
 ### Пять понятий, без которых не обойтись
 
@@ -142,9 +147,11 @@ docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway \
 | `deepseek-r1:14b` | 14B (Qwen) | Ollama, LM Studio | ~9–10 ГБ | средне | RTX 3060 12GB, 4060 Ti 16GB |
 | `deepseek-r1:32b` | 32B (Qwen) | Ollama, llama.cpp | ~20 ГБ | средне | RTX 3090 / 4090 / 5090, Mac 32 ГБ+ |
 | `deepseek-r1:70b` | 70B (Llama) | Ollama, llama.cpp | ~43 ГБ | медленно | 2×24 ГБ GPU, Mac 64 ГБ+ |
-| **DeepSeek-V4-Flash** | 284B / 13B MoE | llama.cpp | ~103 ГБ (3 бит) | средне | Mac Studio 128 ГБ+, DGX Spark, ПК 128 ГБ RAM + GPU |
-| **DeepSeek-V4-Pro** | 1.6T / 49B MoE | vLLM, SGLang | ~800 ГБ+ | — | Дата-центр (8× H200/B200) |
-| `deepseek-v4-*:cloud` | — | Ollama Cloud | любой ПК | быстро | Когда своего железа нет |
+| `R1-0528-Qwen3-8B` | 8B | Ollama (`hf.co/...`), LM Studio | ~5 ГБ | быстро | Самый сильный дистиллят 8B |
+| **DeepSeek-V4-Flash-0731** (GGUF) | 284B / 13B MoE | llama.cpp, ds4 (Mac) | ~103 ГБ (3 бит) | средне | Mac Studio 128 ГБ+, DGX Spark, ПК 128 ГБ RAM + GPU |
+| **DeepSeek-V4.1-Flash-1017** ⭐ | ~552B + Engram / 8–16B | SGLang, vLLM; MLX (сообщество) | ~510 ГБ FP8; ~167 ГБ 2 бит | средне | 8× H100/H200; Mac Studio 256–512 ГБ |
+| **DeepSeek-V4-Pro-0813** | 1.6T / 49B MoE | vLLM, SGLang | ~800 ГБ+ | — | Дата-центр (8× H200/B200) |
+| Облако (`deepseek-v4.1-flash`, `:cloud`) | — | API DeepSeek, Ollama Cloud, OpenRouter | любой ПК | быстро | Когда своего железа нет |
 
 \* Только веса. Под контекст нужно добавить память на KV-кэш (см. часть 4).
 \*\* Если модель целиком помещается в видеопамять.
@@ -159,10 +166,25 @@ docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway \
      ├── 12–16 ГБ → deepseek-r1:14b
      ├── 24–32 ГБ → deepseek-r1:32b
      └── 48+ ГБ   → deepseek-r1:70b
-Mac на Apple Silicon? → смотри на объём памяти: 16 ГБ → 8b, 32 ГБ → 14b–32b, 64 ГБ → 70b, 128 ГБ+ → V4-Flash
-Нужно максимальное качество и приватность? → V4-Flash на своём сервере
+Mac на Apple Silicon? → смотри на объём памяти: 16 ГБ → 8b, 32 ГБ → 14b–32b, 64 ГБ → 70b, 128 ГБ+ → V4-Flash-0731, 256–512 ГБ → V4.1-Flash (MLX)
+Нужно максимальное качество и приватность? → V4.1-Flash-1017 на сервере с 8 GPU (SGLang / vLLM)
 Нужно максимальное качество без железа? → официальный API DeepSeek или :cloud
 ```
+
+### V4-Flash-0731 или V4.1-Flash-1017?
+
+| | V4-Flash-0731 | V4.1-Flash-1017 |
+|---|---|---|
+| Размер весов | 284B (~103–162 ГБ в GGUF) | ~552B + 196B Engram (~510 ГБ FP8, ~167 ГБ в 2 бит) |
+| Активных параметров | 13B | 8B prefill / 16B decode |
+| Картинки на вход | только Vision-Exp | ✅ нативно |
+| KV-кэш | компактный | ещё в ~4 раза меньше |
+| llama.cpp / Ollama / LM Studio | ✅ (GGUF от Unsloth) | ❌ пока нет в основной ветке |
+| Спекулятивное декодирование DSpark | ✅ | ❌ |
+| Качество в агентных задачах и коде | хорошее | **лучшее у DeepSeek на октябрь 2026** |
+| **Итог** | **Лучший выбор для дома** | Сервер, большой Mac или облако |
+
+📖 Полный каталог всех версий и разновидностей с железом под каждую: [docs/15-modeli-i-zhelezo.md](docs/15-modeli-i-zhelezo.md)
 
 > ⚠️ **Важно:** дистилляты R1 — это Qwen/Llama, обученные «думать как R1». Они хороши в математике и коде, но знаний и русского языка у них меньше, чем у полноразмерного DeepSeek. Для русского лучше брать **14B и выше**.
 
@@ -204,10 +226,12 @@ Mac на Apple Silicon? → смотри на объём памяти: 16 ГБ �
 | RTX 3060 12 ГБ / 4060 Ti 16 ГБ | R1 14B целиком на GPU, 30–50 ток/с |
 | RTX 3090 / 4090 / 5090 | R1 32B Q4; 70B частично в RAM |
 | MacBook / Mac mini 64 ГБ | R1 70B Q4 |
-| Mac Studio 128–512 ГБ | **V4-Flash** в Q3–Q8 |
+| Mac Studio 128–192 ГБ | **V4-Flash-0731** в Q3–Q8 |
+| Mac Studio 256–512 ГБ | **V4.1-Flash** (MLX 2 бит ~167 ГБ; 4/8 бит ~430 ГБ) |
 | ПК: 128–192 ГБ DDR5 + RTX 4090 | **V4-Flash** (эксперты MoE в RAM) |
 | NVIDIA DGX Spark 128 ГБ | V4-Flash в 2–3-битных квантах |
-| 8× H200 / B200 | V4-Pro в FP8/FP4 |
+| 8× H100 / H200 | **V4.1-Flash-1017** в FP8 (~510 ГБ) |
+| 8× B200 / GB300 | V4-Pro-0813 в FP8 / NVFP4 |
 
 ### NVIDIA, AMD, Apple, Intel
 
@@ -234,6 +258,8 @@ ollama show deepseek-r1:14b       # параметры, шаблон, лицен
 ```
 
 ### Модели DeepSeek в Ollama
+
+> V4.1-Flash локально в Ollama пока не запускается (архитектура `deepseek_v41` не поддерживается движком), доступна только облачно: `deepseek-v4.1-flash`.
 
 - `deepseek-r1:1.5b`, `7b`, `8b`, `14b`, `32b`, `70b` — дистилляты, работают локально
 - `deepseek-r1:671b` — полная R1 (нужно 400+ ГБ)
@@ -625,7 +651,31 @@ client = OpenAI(base_url="https://api.deepseek.com", api_key="sk-...")
 client.chat.completions.create(model="deepseek-v4-flash", messages=[...])
 ```
 
-Модели: `deepseek-v4-flash` и `deepseek-v4-pro`. Старые имена `deepseek-chat` и `deepseek-reasoner` выведены из эксплуатации. API также совместим с форматом Anthropic. Цены смотри на [api-docs.deepseek.com](https://api-docs.deepseek.com).
+Модели: `deepseek-flash` (сейчас ведёт на V4.1-Flash) и `deepseek-v4-pro`. Старые имена `deepseek-chat` и `deepseek-reasoner` выведены из эксплуатации. API также совместим с форматами Anthropic и OpenAI Responses. Цены и актуальные имена смотри на [api-docs.deepseek.com](https://api-docs.deepseek.com).
+
+### 🔎 Новое: DeepSeek Search и Fetch API (веб-поиск для агентов)
+
+С октября 2026 у DeepSeek есть официальные [Search и Fetch API](https://api-docs.deepseek.com/guides/search): поиск по вебу и загрузка страниц в Markdown. Цена — $0.75 за 1000 успешных запросов (пустые и ошибки бесплатно), лимит — 5 запросов/с.
+
+```python
+import os, requests
+H = {"Authorization": f"Bearer {os.environ['DEEPSEEK_API_KEY']}"}
+
+res = requests.post("https://api.deepseek.com/v1/tools/search", headers=H, json={
+    "query": "DeepSeek V4.1 site:huggingface.co after:2026-09-01",
+    "count": 5,
+}).json()["results"]
+for x in res:
+    print(x["rerank_score"], x["title"], x["url"])   # + summary, content, date, authority
+
+page = requests.post("https://api.deepseek.com/v1/tools/fetch", headers=H,
+                     json={"url": res[0]["url"]}).json()
+print(page["content"][:500])                          # Markdown страницы
+```
+
+Операторы запроса: `site:`, `-site:`, `"фраза"`, `-слово`, `lang:ru,en`, `after:` и `before:`.
+
+**Фишка:** подключи Search как tool к **локальному** DeepSeek в Ollama. Модель работает у тебя, а свежие факты берутся из веба. Готовый агент: [examples/web_search_agent.py](examples/web_search_agent.py).
 
 📖 Подробнее и больше примеров: [docs/07-api-i-integracii.md](docs/07-api-i-integracii.md), [examples/](examples/)
 
@@ -1022,6 +1072,7 @@ Ollama — удобная обёртка с каталогом моделей и
 | 12 | [Траблшутинг](docs/12-troubleshooting.md) |
 | 13 | [Дообучение (fine-tuning)](docs/13-fine-tuning.md) |
 | 14 | [Установка по шагам: Windows, macOS, Linux](docs/14-ustanovka-po-os.md) |
+| 15 | [🆕 Все модели DeepSeek 2026 и железо под них, V4.1-Flash-1017, Search API](docs/15-modeli-i-zhelezo.md) |
 | ⚡ | [Шпаргалка команд](docs/cheatsheet.md) |
 
 ### Примеры кода — [`examples/`](examples/)
@@ -1031,6 +1082,7 @@ Ollama — удобная обёртка с каталогом моделей и
 | [chat_cli.py](examples/chat_cli.py) | Консольный чат со стримингом и показом рассуждений |
 | [rag_minimal.py](examples/rag_minimal.py) | Чат с папкой документов |
 | [tool_calling.py](examples/tool_calling.py) | Вызов функций, полный цикл |
+| [web_search_agent.py](examples/web_search_agent.py) | 🆕 Локальный DeepSeek + веб-поиск DeepSeek Search API |
 | [benchmark.sh](examples/benchmark.sh) | Замер скорости моделей |
 
 ### Конфиги — [`configs/`](configs/)
@@ -1049,6 +1101,8 @@ Ollama — удобная обёртка с каталогом моделей и
 
 - [DeepSeek на Hugging Face](https://huggingface.co/deepseek-ai) — официальные веса
 - [Релиз DeepSeek V4](https://api-docs.deepseek.com/news/news260424/) — официальное объявление
+- [DeepSeek-V4.1-Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) — последняя модель (веса, MIT)
+- [DeepSeek Search и Fetch API](https://api-docs.deepseek.com/guides/search) — документация
 - [Ollama — библиотека моделей](https://ollama.com/library)
 - [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - [Unsloth — гайд по DeepSeek V4](https://unsloth.ai/docs/models/deepseek-v4)
@@ -1068,7 +1122,7 @@ DeepSeek — торговая марка правообладателя. Про�
 
 <div align="center">
 
-**Ключевые слова:** deepseek локально, как запустить deepseek на пк, установка deepseek, deepseek ollama, deepseek r1 локально, deepseek v4 gguf, deepseek v4 flash, llama.cpp deepseek, lm studio deepseek, deepseek без интернета, локальная нейросеть, нейросеть на своём компьютере, локальный chatgpt, open webui, deepseek api python, deepseek гайд на русском, deepseek windows, deepseek mac
+**Ключевые слова:** deepseek v4.1 flash, deepseek v4.1-flash-1017, deepseek search api, deepseek локально, как запустить deepseek на пк, установка deepseek, deepseek ollama, deepseek r1 локально, deepseek v4 gguf, deepseek v4 flash, llama.cpp deepseek, lm studio deepseek, deepseek без интернета, локальная нейросеть, нейросеть на своём компьютере, локальный chatgpt, open webui, deepseek api python, deepseek гайд на русском, deepseek windows, deepseek mac
 
 ⭐ **Помог гайд? Поставь звезду и поделись с коллегами!**
 
